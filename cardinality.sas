@@ -237,7 +237,3 @@ quit;
 libname xtmp clear;
 
 %mend cardinality;
-
-%cardinality(sashelp.cars);
-
-%cardinality(tmp1.pde_2008_2010);
