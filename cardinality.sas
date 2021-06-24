@@ -233,16 +233,3 @@ run;
 quit;
 
 %mend cardinality;
-
-/* To see how this macro works, run the following: */
-/* This requests all variables as the _vars parameter is blank. */
-
-%cardinality(sashelp.cars);
-
-/* We can add variables if we want: */
-
-%cardinality(sashelp.cars, make, model);
-
-/* We can just look at one variable if we want. */
-
-%cardinality(sashelp.cars, msrp);
