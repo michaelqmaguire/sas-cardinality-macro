@@ -108,7 +108,7 @@ run;
 
 	%end;
 
-proc sort data 	= &dsn. (keep = &voi.)
+proc sort data = &dsn. (keep = &voi.)
 	out = xtmp._c&voit.;
 		by &voi.;
 run;
