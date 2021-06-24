@@ -108,6 +108,11 @@ run;
 
 	%end;
 
+proc sort data 	= &dsn. (keep = &voi.)
+	out = xtmp._c&voit.;
+		by &voi.;
+run;
+
 /* Run a DATA step that retains the last observation in the dataset. */
 
 data 		xtmp._w&voit. (keep = 	 variable_name /* Name of variable. */
@@ -117,9 +122,9 @@ data 		xtmp._w&voit. (keep = 	 variable_name /* Name of variable. */
 									 percent_unique /* Metric ranging from 0 to 1 representing uniqueness of variable. 0 = perfectly unique, 1 same value */
 									 percent_miss /* Metric representing how many cases are missing relative to all the observations. */
 						   );
-	set 	&dsn.  	(keep = &vars.) /* This keeps whatever variables are requested, regardless of how many. */
+	set 	xtmp._c&voit. /* This keeps whatever variables are requested, regardless of how many. */
 					 end = z; /* Setting sorted dataset above and creating temporary variable called 'z' that marks whether an observation is the last observation in a dataset. */
-	by 		&voi.	 notsorted; /* Using by-group processing for incremental counters for the variable under selection. */
+	by 		&voi.; /* Using by-group processing for incremental counters for the variable under selection. */
 	retain 	x n_miss 0; /* Retaining values for incrementing by-group processing. Retaining is also a compile-time only statement so it is theoretically faster than setting a variable to zero. */
 
 			variable_name = vname(&voi.); /* Keeping variable name at end. */
