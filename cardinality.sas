@@ -163,7 +163,8 @@ libname _cardrpt "&_whereswork.\_cardrpt"; /* Create temporary directory. */
 		create table	_cardrpt.m_&vart. as
 			select
 						name
-							label = "Variable Name",
+							label = "Variable Name"
+						,
 						case 
 							when type = "char"
 								then "Character"
@@ -171,15 +172,20 @@ libname _cardrpt "&_whereswork.\_cardrpt"; /* Create temporary directory. */
 								then "Numeric"
 							else "No Type"
 						end as type_f
-							label = "Variable Type",
+							label = "Variable Type"
+						,
 						length
-							label = "Variable Length",
+							label = "Variable Length"
+						,
 						varnum
-							label = "Position in Dataset",
+							label = "Position in Dataset"
+						,
 						label
-							label = "Variable Label",
+							label = "Variable Label"
+						,
 						format
-							label = "Variable Format",
+							label = "Variable Format"
+						,
 						informat
 							label = "Variable Informat"
 			from
