@@ -1,244 +1,222 @@
-/*		---------------------------------------------------------------			*\
-|*		PROGRAM: 	CARDINALITY.SAS												*|
-|*																				*|
-|*		AUTHOR:  	MICHAEL QUINN MAGUIRE, MS									*|
-|*																				*|
-|*		EMAIL: 		MICHAELQMAGUIRE2@COP.UFL.EDU								*|
-|*																				*|
-|*		PURPOSE: 	(1) SEE NUMBER OF OBSERVATIONS PER VARIABLE.				*|
-|*				 	(2) SEE NUMBER OF MISSING OBSERVATIONS PER VARIABLE.		*|
-|*				 	(3) SEE HOW MANY UNIQUE LEVELS EXIST IN A GIVEN VARIABLE.	*|
-|*				 	(4) SEE METADATA LEVEL INFORMATION 							*|
-|*				 	(5) SEE PERCENTAGE OF MISSING CASES.						*|
-|*				 	(6) SEE PERCENTAGE OF UNIQUE CASES.							*|
-|*																				*|
-|*		PARAMETERS:	(1) 'DSN' - DATASET YOU WANT TO EXAMINE.					*|
-|*						ASSUMES TWO-LEVEL NAME (E.G., WORK.WANT, SASHELP.CARS)	*|
-|*					(2)	'_VARS` - VARIABLES YOU WANT TO EXAMINE.				*|
-|*						YOU CAN LEAVE THIS BLANK IF YOU WANT TO SEE ALL,		*|
-|*						YOU CAN ENTER ONE VARIABLE, OR YOU CAN ENTER MULTIPLE.	*|	
-|*																				*|
-\*		---------------------------------------------------------------			*/
+%macro cardinality (dsn, variables);
 
-%macro cardinality (dsn, _vars);
+/* 	------------------------------------------------------------------- 	*/
+/* 	Step 1: Setting up enivornment.											*/
+/* 	Setting up libname that outputs results into temporary directory. 		*/
+/* 	This is done so that I do not clear out someone's existing results		*/
+/* 	with the PROC DATASETS command at the bottom.							*/
+/* 	------------------------------------------------------------------- 	*/
 
-/* ------------------------------------------------------------------------------------------------------------------------ */
-/* Setting up temporary directories so that this doesn't overwrite or delete any of their datasets in their work directory	*/
-/* ------------------------------------------------------------------------------------------------------------------------ */
+%let _whereswork = %sysfunc(getoption(work)); /* Locate work directory. */
 
-%let x = %sysfunc(getoption(work)); /* Extract work directory no matter the computer. */
+options dlcreatedir; /* If directory doesn't exist, create it. */
 
-%put &x.; /* Just for verification purposes. */
+libname _cardrpt "&_whereswork.\_cardrpt"; /* Create temporary directory. */
 
-options dlcreatedir; /* this creates the directory if it doesn't exist. */
+/* 	-------------------------------------------------------	*/
+/* 	Step 2: Allocating requested variables.					*/
+/* 	Begin storing requested variables into macro variables.	*/
+/* 	Three things can occur here:							*/
+/*	(1) User requests no variables, so select all.			*/
+/*	(2) User requests one variable, so keep that one.		*/
+/*	(3) User requests multiple variables, so keep those.	*/
+/* 	-------------------------------------------------------	*/
 
-libname xtmp "&x.\xtmp"; /* Normal libname statement that creates directory wherever work directory is. */
+/* If no variables requested, store all of them into a macro variable. */
 
-/* ------------------------------------------------------------------------------------------------------------------------ */
-/* Begin processing cardinality report.																						*/
-/* ------------------------------------------------------------------------------------------------------------------------ */
+%if %length(&variables.) = 0 %then %do; 
 
-/* If no variables are specified in the _vars parameter, do the following. */
-
-%if %length(&_vars.) = 0 %then %do;
-
-proc sql noprint;
-	select
-				trim(name),
-				quote(trim(name))
-					into	:vars separated by " ",	/* Create macro variabe containing each variable in the given dataset. */
-							:vars_q separated by ", " /* Create macro variable containing each variable in dataset quoted and separated by a comma. */
-	from
-				dictionary.columns
-	where
-				libname = "%scan(%upcase(&dsn.), 1)" 	and	/* getting libref from dsn macro variable. */
-				memname = "%scan(%upcase(&dsn.), -1)"; 		/* getting dataset name from dsn macro variable. */
-quit;
+	proc sql noprint;
+		select
+					name
+						into :voi separated by " "
+		from
+					dictionary.columns
+		where
+					libname = "%scan(%upcase(&dsn.), 1)" and
+					memname = "%scan(%upcase(&dsn.), -1)";
+	quit;
 
 %end;
 
-/* If only one parameter is specified, do the following */
+/* If one variable requested, just store it with a %let statement */
 
-%else %if %length(&_vars.) = 1 %then %do;
-	%let vars = &_vars.;
-	%let vars_q = %quote(&_vars.);
+%else %if %length(&variables.) = 1 %then %do;
+
+	%let voi = &variables.;
+
 %end;
 
-/* If more than one variable is specified, do the following */
+/* If multiple variables are requested, store them into a macro variable with a comma separator. */
 
 %else %do;
 
-data _null_;
-	requested_vars = "&_vars."; /* Store requested variables in the PDV. */
-	length vars_quoted $5000.;	/* Create a new variable with an arbitrariliy long length depending on variables requested. */
-	do i = 1 to countw(requested_vars, " "); /* Do for each variable in the requested_vars variable. */
-		vars_quoted = catx(",", vars_quoted, "'" || scan(requested_vars, i, " ") || "'"); /* Take the first variable, quote it, and add a comma at the end. Continue until there are no more variables. */
-	end; /* End the do processing. */
-	call symputx("vars", requested_vars); /* Store the "requested_vars" variable into a macro variable called "vars". */
-	call symputx("vars_q", vars_quoted); /* Store the "vars_quoted" variable into a macro variable called "vars_q". */
-run;
+	data _null_;
+		requested_vars = "&variables.";
+		length vars_quoted $5000.;
+		do i = 1 to countw(requested_vars, " ");
+			vars_quoted = catx("," vars_quoted, "'" || trim(scan(requested_vars, i, " ")) || "'");
+		end;
+		call symputx("voi", requested_vars);
+	run;
 
 %end;
 
-/* Do the following process for each variable stored in the macro variable 'vars'. */
-/* The %do loop essentially counts each element in the macro variable 'vars' and stores the number in a macro variable named 'i'. */
-/* In other words, the first variable will have an &i. value of 1, the second will have 2, etc. */
+/* 	-------------------------------------------------------	*/
+/* 	Step 3: Calculate measures on each variable.			*/
+/* 	-------------------------------------------------------	*/
 
-%do i = 1 %to %sysfunc(countw(&vars., " "));
+/* Do this from the first word to however many words there are separated by spaces, and store the number in a macro variable called 'i'. */
 
-/* This %LET statement creates a local macro variable that stores captures the name of the variable depending on the position in the %do loop. */
-/* Local macro variables only exist during the duration of the macro */
-/* voi stands for variable of interest. */
+%do i = 1 %to %sysfunc(countw(&voi., " "));
 
-%let voi = %scan(&vars., &i., " ");
+/* Scan the macro variable, &voi., which contains all the variables, and select the i'th word depending on the location in the %do loop. */
 
-/* This exists solely to deal with variables that are 32 characters. It truncates the variable name to 30 characters */
+%let var = %scan(&voi., &i., " ");
 
-%if %length(&voi.) > 32 %then %do;
+/* If a variable name is longer or equal to 31 characters, trim it so the dataset will not exceed 32 characters. */
 
-	%let voit = %substr(&voi., 1, 30);
+%if %length(&var.) >= 31 %then %do; 
 
-%end;
+	/* This is the truncated variable name, aka 'vart' for var trimmed. */
 
-/* If it's not longer than 32 characters, just set it equal to the variable of interest. */
+	%let vart = %substr(&voi., 1, 30); 
+
+%end; 
+
+/* If a variable name is less  */
 
 	%else %do;
-
-		%let voit = &voi.;
+		
+		/* Just set var trimmed equal to var if it's not longer than 31 characters. */
+		
+		%let vart = &var.;
 
 	%end;
 
-proc sort data = &dsn. (keep = &voi.)
-	out = xtmp._c&voit.;
-		by &voi.;
+	/* Create a separate dataset for each variable with each measure.	*/
+
+	proc sql;
+
+		create table 	_cardrpt.c_&vart. as
+			select
+						"&var." 							as variable
+																label  = "Variable Name"
+						,
+						count(&var.) 						as non_missing_obs
+																label  = "Number of Non-Missing Observations"
+																format = comma16.		
+						,		
+						count(distinct &var.) 				as distinct_obs
+																label  = "Number of Levels"
+																format = comma16.		
+						,
+						sum(
+							case when missing(&var.)
+							then 1
+							else 0
+							end
+						)									as missing_obs
+																label  = "Number of Missing Observations"
+																format = comma16.		
+						,
+						calculated missing_obs  / count(*) 	as percent_missing
+																label  = "Percent Missing"
+																format = percent8.2		
+						,
+						calculated distinct_obs / count(*)	as percent_unique
+																label  = "Percent Unique"
+																format = percent8.2		
+			from
+						&dsn.;
+
+	quit;
+
+	/* Extract the metadata from the dictionary tables for the given variables. */
+
+	proc sql;
+
+		create table	_cardrpt.m_&vart. as
+			select
+						name
+							label = "Variable Name",
+						case 
+							when type = "char"
+								then "Character"
+							when "num"
+								then "Numeric"
+							else "No Type"
+						end as type_f
+							label = "Variable Type",
+						length
+							label = "Variable Length",
+						varnum
+							label = "Position in Dataset",
+						label
+							label = "Variable Label",
+						format
+							label = "Variable Format",
+						informat
+							label = "Variable Informat"
+			from
+						dictionary.columns
+			where
+						libname 		= "%scan(%upcase(&dsn.), 1)" 	and
+						memname 		= "%scan(%upcase(&dsn.), -1)" 	and
+						propcase(name)	= "%sysfunc(propcase(&var.))";
+
+	quit;
+
+%end;
+
+/* Concatenate all the measure-level datasets into one. */
+
+data _cardrpt.counts_all;
+	length variable $32.;
+	set _cardrpt.c_:;
 run;
 
-/* Run a DATA step that retains the last observation in the dataset. */
+/* Concatenate all the metadata-level datasets into one. */
 
-data 		xtmp._w&voit. (keep = 	 variable_name /* Name of variable. */
-									 n_levels /* Number of levels in dataset. */
-									 n_cases /* Number of observations in dataset */
-									 n_miss /* Number of missing values in dataset */
-									 percent_unique /* Metric ranging from 0 to 1 representing uniqueness of variable. 0 = perfectly unique, 1 same value */
-									 percent_miss /* Metric representing how many cases are missing relative to all the observations. */
-						   );
-	set 	xtmp._c&voit. 
-			end = z; /* Setting sorted dataset above and creating temporary variable called 'z' that marks whether an observation is the last observation in a dataset. */
-	by 		&voi.; /* Using by-group processing for incremental counters for the variable under selection. */
-	retain 	x n_miss 0; /* Retaining values for incrementing by-group processing. Retaining is also a compile-time only statement so it is theoretically faster than setting a variable to zero. */
+data _cardrpt.meta_all;
+	length name $32.;
+	set _cardrpt.m_:;
+run;
 
-			variable_name = vname(&voi.); /* Keeping variable name at end. */
+/* Create the final report as a dataset */
 
-			n_cases = _N_; /* Represents number of rows. */
-
-			if missing(&voi.) then n_miss + 1; /* Begins at zero. If a record is missing, it increments by 1. This value is retained until it changes again or until the step reaches the last observation. */
-
-			if first.&voi. then n_levels + 1; /* Again - begins at zero. Increments by 1 if it reaches a new level. This value is retained until it changes again or until the step reaches the last observation. */
-
-			percent_unique = n_levels / n_cases; /* Number of unique levels divided by the number of observations. 0 represents a unique field, 1 represents a completely uniform field. */
-
-			percent_miss = n_miss / n_cases; /* Shows percentage of missing records in a dataset. */
-
-			if z then output; /* Checks if it's the last observation in the dataset, and if it is, it outputs all the calculations done above. */
-
-	label	variable_name 		= "Variable"
-			n_cases 			= "Number of Observations"
-			n_miss 				= "Number of Missing Observations"
-			n_levels 			= "Number of Unique Levels/Categories"
-			percent_unique 		= "Percent Unique"
-			percent_miss 		= "Percent Missing"; /* Labeling them all so the output is nicer. */
-
-
-	format	percent_miss 	percent8.2
-			percent_unique	percent8.2; /* Formatting for nicer output. */
+proc sql;
+	create table	_cardrpt.cardinality as
+		select		
+					t1.*,
+					t2.type_f,
+					t2.length,
+					t2.varnum,
+					t2.label,
+					t2.format,
+					t2.informat
+		from
+					_cardrpt.counts_all as t1
+						left join
+					_cardrpt.meta_all as t2
+							on	t1.variable = t2.name
+		order by
+					varnum;
+quit;	
 			
+/* Print out the report. */
+	
+proc print data = _cardrpt.cardinality noobs label;
 run;
 
-%end; /* Ends %do loop. Returns to the top if there are more variables to process. If there are no more, then the %do loop ends. */
+/* Remove all the datasets from the _cardrpt libname */
 
-/* Combining all the datasets into one. */
-
-data xtmp.cardinality_report;
-	retain variable_name n_levels n_miss n_cases percent_unique percent_miss;
-	set xtmp._w:;
-run;
-
-/* Extract metadata info and store it into its own dataset */
-
-proc contents data = &dsn. 
-	out = xtmp.metadata (keep = name length varnum type label format formatl formatd informat informl informd) noprint;
-run;
-
-/* Sort by name for merge */
-
-proc sort data = xtmp.metadata;
-	by name;
-	where upcase(name) in (%upcase(&vars_q.)); /* This is where we have to use the quoted vars. */
-run;
-
-/* Sort by name for merge */
-
-proc sort data = xtmp.cardinality_report;
-	by variable_name;
-run;
-
-/* Doing this to include character/numeric on final output */
-
-proc format;
-	value n2l 
-		1 = "Numeric"
-		2 = "Character"
-;
-
-/* Merge it all together and add final formatting touches. */
-
-data 		xtmp.cardinality_report_fnl 	(drop = format formatd formatl informat informd informl type);
-	merge	xtmp.cardinality_report 		(in = a)
-			xtmp.metadata 					(in = b 
-								 	 		 rename = (name = variable_name)
-											);
-	by		variable_name;
-
-			if not missing(format) then do;
-				_formatx 	= catx(".", cats(format, formatl), formatd);
-			end;
-
-			if not missing(informat) then do;
-				_informatx 	= catx(".", cats(informat, informl), informd);
-			end;
-
-			_type = put(type, n2l.);
-
-	label	_formatx 	= "Format"
-			_informatx 	= "Informat"
-			_type		= "Variable Type";
-			
-run;
-
-/* Ordering for consistency with dataset viewing */
-
-proc sort data = xtmp.cardinality_report_fnl;
-	by varnum;
-run;
-
-/* The actual report */
-
-title "Cardinality Report for %sysfunc(upcase(&dsn.))";
-footnote "Percent Unique = Number of Levels / Number of Observations. 0.00% = Not Unique, 100.0% = Completely Unique";
-footnote2 "Percent Missing = Number of Missing Observations / Number of Observations";
-proc print data = xtmp.cardinality_report_fnl label noobs;
-	var variable_name label n_levels n_miss n_cases percent_unique percent_miss length varnum _formatx _informatx _type;
-run;
-footnote;
-
-/* Deleting everything in the xtmp directory. */
-
-proc datasets library = xtmp kill nolist;
+proc datasets library = _cardrpt kill nolist;
 run;
 quit;
 
-/* Clear the temporary directory */
+/* Clear the libname so it no longer exists. */
 
-libname xtmp clear;
+libname _cardrpt clear;
 
 %mend cardinality;
