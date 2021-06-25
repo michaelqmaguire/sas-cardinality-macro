@@ -22,12 +22,12 @@
 
 %macro cardinality (dsn, variables);
 
-/* 	------------------------------------------------------------------- 	*/
-/* 	Step 1: Setting up enivornment.											*/
-/* 	Setting up libname that outputs results into temporary directory. 		*/
-/* 	This is done so that I do not clear out someone's existing results		*/
-/* 	with the PROC DATASETS command at the bottom.							*/
-/* 	------------------------------------------------------------------- 	*/
+/* 	------------------------------------------------------------------- */
+/* 	Step 1: Setting up enivornment.										*/
+/* 	Setting up libname that outputs results into temporary directory. 	*/
+/* 	This is done so that I do not clear out someone's existing results	*/
+/* 	with the PROC DATASETS command at the bottom.						*/
+/* 	------------------------------------------------------------------- */
 
 %let _whereswork = %sysfunc(getoption(work)); /* Locate work directory. */
 
@@ -84,9 +84,9 @@ libname _cardrpt "&_whereswork.\_cardrpt"; /* Create temporary directory. */
 
 %end;
 
-/* 	-------------------------------------------------------	*/
-/* 	Step 3: Calculate measures on each variable.			*/
-/* 	-------------------------------------------------------	*/
+/* 	-------------------------------------------- */
+/* 	Step 3: Calculate measures on each variable. */
+/* 	-------------------------------------------- */
 
 /* Do this from the first word to however many words there are separated by spaces, and store the number in a macro variable called 'i'. */
 
@@ -191,9 +191,9 @@ libname _cardrpt "&_whereswork.\_cardrpt"; /* Create temporary directory. */
 
 %end;
 
-/* 	-------------------------------------------------------	*/
-/* 	Step 4: Combining Datsets.								*/
-/* 	-------------------------------------------------------	*/
+/* 	-------------------------- */
+/* 	Step 4: Combining Datsets. */
+/* 	-------------------------- */
 
 /* Concatenate all the measure-level datasets into one. */
 
@@ -209,9 +209,9 @@ data _cardrpt.meta_all;
 	set _cardrpt.m_:;
 run;
 
-/* 	-------------------------------------------------------	*/
-/* 	Step 5: Create the final report.						*/
-/* 	-------------------------------------------------------	*/
+/* 	-------------------------------- */
+/* 	Step 5: Create the final report. */
+/* 	-------------------------------- */
 
 proc sql;
 	create table	_cardrpt.cardinality as
