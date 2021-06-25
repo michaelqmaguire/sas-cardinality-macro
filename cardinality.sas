@@ -17,6 +17,12 @@
 |*					(2)	'VARIABLES` - VARIABLES YOU WANT TO EXAMINE.			*|
 |*						YOU CAN LEAVE THIS BLANK IF YOU WANT TO SEE ALL,		*|
 |*						YOU CAN ENTER ONE VARIABLE, OR YOU CAN ENTER MULTIPLE.	*|	
+|*						YOU NEED TO ENTER THE VARIABLES SEPARATED BY A SPACE,	*|
+|*						AND CASE DOES NOT MATTER.								*|
+|*																				*|
+|*		EXAMPLE:	%cardinality(sashelp.cars); OR								*|
+|*					%cardinality(sashelp.cars, make model); OR					*|
+|*					%cardinality(sashelp.cars, make);							*|
 |*																				*|
 \*		---------------------------------------------------------------			*/
 
