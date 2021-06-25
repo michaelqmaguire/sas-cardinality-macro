@@ -1,3 +1,25 @@
+/*		---------------------------------------------------------------			*\
+|*		PROGRAM: 	CARDINALITY.SAS												*|
+|*																				*|
+|*		AUTHOR:  	MICHAEL QUINN MAGUIRE, MS									*|
+|*																				*|
+|*		EMAIL: 		MICHAELQMAGUIRE2@COP.UFL.EDU								*|
+|*																				*|
+|*		PURPOSE: 	(1) SEE NUMBER OF OBSERVATIONS PER VARIABLE.				*|
+|*				 	(2) SEE NUMBER OF MISSING OBSERVATIONS PER VARIABLE.		*|
+|*				 	(3) SEE HOW MANY UNIQUE LEVELS EXIST IN A GIVEN VARIABLE.	*|
+|*				 	(4) SEE METADATA LEVEL INFORMATION 							*|
+|*				 	(5) SEE PERCENTAGE OF MISSING CASES.						*|
+|*				 	(6) SEE PERCENTAGE OF UNIQUE CASES.							*|
+|*																				*|
+|*		PARAMETERS:	(1) 'DSN' - DATASET YOU WANT TO EXAMINE.					*|
+|*						ASSUMES TWO-LEVEL NAME (E.G., WORK.WANT, SASHELP.CARS)	*|
+|*					(2)	'_VARS` - VARIABLES YOU WANT TO EXAMINE.				*|
+|*						YOU CAN LEAVE THIS BLANK IF YOU WANT TO SEE ALL,		*|
+|*						YOU CAN ENTER ONE VARIABLE, OR YOU CAN ENTER MULTIPLE.	*|	
+|*																				*|
+\*		---------------------------------------------------------------			*/
+
 %macro cardinality (dsn, variables);
 
 /* 	------------------------------------------------------------------- 	*/
@@ -169,6 +191,10 @@ libname _cardrpt "&_whereswork.\_cardrpt"; /* Create temporary directory. */
 
 %end;
 
+/* 	-------------------------------------------------------	*/
+/* 	Step 4: Combining Datsets.								*/
+/* 	-------------------------------------------------------	*/
+
 /* Concatenate all the measure-level datasets into one. */
 
 data _cardrpt.counts_all;
@@ -183,7 +209,9 @@ data _cardrpt.meta_all;
 	set _cardrpt.m_:;
 run;
 
-/* Create the final report as a dataset */
+/* 	-------------------------------------------------------	*/
+/* 	Step 5: Create the final report.						*/
+/* 	-------------------------------------------------------	*/
 
 proc sql;
 	create table	_cardrpt.cardinality as
