@@ -75,10 +75,6 @@ libname _cardrpt "&_whereswork.\_cardrpt"; /* Create temporary directory. */
 
 	data _null_;
 		requested_vars = "&variables.";
-		length vars_quoted $5000.;
-		do i = 1 to countw(requested_vars, " ");
-			vars_quoted = catx("," vars_quoted, "'" || trim(scan(requested_vars, i, " ")) || "'");
-		end;
 		call symputx("voi", requested_vars);
 	run;
 
@@ -135,8 +131,8 @@ libname _cardrpt "&_whereswork.\_cardrpt"; /* Create temporary directory. */
 						,
 						sum(
 							case when missing(&var.)
-							then 1
-							else 0
+								then 1
+								else 0
 							end
 						)									as missing_obs
 																label  = "Number of Missing Observations"
@@ -216,18 +212,23 @@ run;
 proc sql;
 	create table	_cardrpt.cardinality as
 		select		
-					t1.*,
-					t2.type_f,
-					t2.length,
-					t2.varnum,
-					t2.label,
-					t2.format,
-					t2.informat
+					t1.name,
+					t1.label,
+					t1.type_f,
+					t1.length,
+					t1.format,
+					t1.informat,
+					t1.varnum,
+					t2.non_missing_obs,
+					t2.missing_obs,
+					t2.percent_missing,
+					t2.distinct_obs,
+					t2.percent_unique
 		from
-					_cardrpt.counts_all as t1
+					_cardrpt.meta_all as t1
 						left join
-					_cardrpt.meta_all as t2
-							on	t1.variable = t2.name
+					_cardrpt.counts_all as t2
+							on	upcase(t1.name) = upcase(t2.variable)
 		order by
 					varnum;
 quit;	
